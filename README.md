@@ -8,19 +8,15 @@ This project is a **web-based solution** designed to automate and simplify the c
 
 Manual timetable management often leads to:
 
-* 
 **Time inefficiency**: Creating schedules manually takes significant effort.
 
 
-* 
 **Conflicts**: Frequent clashes between teachers, rooms, and class sections.
 
 
-* 
 **Update Difficulties**: Hard to manage and communicate changes once a schedule is set.
 
 
-* 
 **Fragmentation**: No single system for administrators, teachers, and students to access information.
 
 
@@ -29,15 +25,12 @@ Manual timetable management often leads to:
 
 The primary goal is to **automate timetable management**.
 
-* 
 **Accuracy**: Drastically reduce scheduling conflicts and errors.
 
 
-* 
 **Security**: Provide role-based access to ensure data integrity.
 
 
-* 
 **Accessibility**: Ensure easy timetable viewing for all user types.
 
 
@@ -66,19 +59,15 @@ The system provides three distinct roles with specialized features:
 
 ## ### Technology Stack
 
-* 
 **Frontend**: HTML, CSS, JavaScript.
 
 
-* 
 **Backend**: Node.js, Express.js.
 
 
-* 
 **Database**: MongoDB.
 
 
-* 
 **Development Tools**: VS Code, Web Browser.
 
 
@@ -87,20 +76,16 @@ The system provides three distinct roles with specialized features:
 
 ## ### System Workflow
 
-1. 
-**Authentication**: User logs into the system.
+1. **Authentication**: User logs into the system.
 
 
-2. 
-**Redirection**: Based on the role, a specific dashboard (Admin, Teacher, or Student) opens.
+2. **Redirection**: Based on the role, a specific dashboard (Admin, Teacher, or Student) opens.
 
 
-3. 
-**Data Retrieval**: The frontend fetches relevant data from the backend API.
+3. **Data Retrieval**: The frontend fetches relevant data from the backend API.
 
 
-4. 
-**Dynamic Rendering**: The timetable is displayed dynamically on the UI.
+4. **Dynamic Rendering**: The timetable is displayed dynamically on the UI.
 
 
 
@@ -108,5 +93,4 @@ The system provides three distinct roles with specialized features:
 
 ## ### Contributors
 
-* 
 **Anfal Qureshi** (24PWBCS1069) 
