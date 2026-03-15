@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin – University Timetable System</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <style>
+  
+    body{
+      background: linear-gradient(135deg, #183072 0%, #2c3b77 100%);
+    }
+  </style>
+</head>
+<body>
+  <button class="logout-btn" onclick="logout()">
+    <i class="fas fa-sign-out-alt"></i> Logout
+  </button>
+
+  <div class="main">
+    <h1><i class="fa fa-gauge"></i> Admin Dashboard</h1>
+    
+    <div class="dashboard">
+      
+      <!-- TEACHERS CARD with Password -->
+      <div class="card">
+        <div class="card-title"><i class="fa fa-user-tie"></i> Teachers</div>
+        <div id="teacher-alert"></div>
+        <input type="text" id="teacher-name" placeholder="Enter teacher username...">
+        <input type="password" id="teacher-password" placeholder="Enter password (min 4 chars)...">
+        <button class="btn-add" onclick="addTeacher()">Add Teacher</button>
+        <button class="btn-show" onclick="showTeacherModal()">Show List</button>
+      </div>
+
+      <!-- DEPARTMENTS CARD -->
+      <div class="card">
+        <div class="card-title"><i class="fa fa-building-columns"></i> Departments</div>
+        <div id="department-alert"></div>
+        <input type="text" id="department-name" placeholder="Enter department...">
+        <button class="btn-add" onclick="addDepartment()">Add</button>
+        <button class="btn-show" onclick="showDepartmentModal()">Show List</button>
+      </div>
+
+      <!-- SEMESTERS CARD -->
+      <div class="card">
+        <div class="card-title"><i class="fa fa-calendar-days"></i> Semesters</div>
+        <div id="semester-alert"></div>
+        <input type="text" id="semester-name" placeholder="Enter semester (e.g., 1, 2, III)...">
+        <button class="btn-add" onclick="addSemester()">Add</button>
+        <button class="btn-show" onclick="showSemesterModal()">Show List</button>
+      </div>
+
+      <!-- SUBJECTS CARD -->
+      <div class="card">
+        <div class="card-title"><i class="fa fa-book-open-reader"></i> Subjects</div>
+        <div id="subject-alert"></div>
+        <input type="text" id="subject-name" placeholder="Enter subject...">
+        <button class="btn-add" onclick="addSubject()">Add</button>
+        <button class="btn-show" onclick="showSubjectModal()">Show List</button>
+      </div>
+
+      <!-- ROOMS CARD -->
+      <div class="card">
+        <div class="card-title"><i class="fa fa-door-open"></i> Rooms</div>
+        <div id="room-alert"></div>
+        <input type="text" id="room-name" placeholder="Enter room number or name...">
+        <select id="room-type">
+          <option value="">Room Type...</option>
+          <option value="Theory">Theory</option>
+          <option value="Lab">Lab</option>
+        </select>
+        <button class="btn-add" onclick="addRoom()">Add</button>
+        <button class="btn-show" onclick="showRoomModal()">Show List</button>
+      </div>
+
+      <!-- TIME SLOTS CARD -->
+      <div class="card">
+        <div class="card-title"><i class="fa fa-clock"></i> Time Slots</div>
+        <div id="slot-alert"></div>
+        <input type="number" min="1" max="12" id="num-slots" placeholder="e.g., 5">
+        <button class="btn-add" onclick="setNumSlots()">Set</button>
+        <div style="margin-top:12px;font-size:0.95em;color:#6366f1;">
+          <strong>Current:</strong> <span id="current-slots"></span> slots/day (Mon–Fri)
+        </div>
+      </div>
+    </div>
+
+    <!-- TEACHER SCHEDULE OVERVIEW -->
+    <div class="card" style="margin-top:30px;">
+      <div class="card-title"><i class="fa fa-table-list"></i> Teacher Schedule Overview</div>
+      <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;">
+        <select id="filter-teacher"><option value="">All Teachers</option></select>
+        <select id="filter-dept"><option value="">All Departments</option></select>
+        <select id="filter-day">
+          <option value="">All Days</option>
+          <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+          <option>Thursday</option><option>Friday</option>
+        </select>
+        <button onclick="showAssignments()" class="btn-show">Apply Filters</button>
+      </div>
+      <div id="assignments-list">
+        <p style="text-align:center;color:#999;padding:20px;">Apply filters to view assignments.</p>
+      </div>
+    </div>
+
+    <!-- TIMETABLE PREVIEW -->
+    <div class="card" style="margin-top:30px;">
+      <div class="card-title"><i class="fa fa-eye"></i> Timetable Preview</div>
+      <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+        <select id="timetable-dept"></select>
+        <select id="timetable-sem"></select>
+        <button class="btn-show" onclick="previewTimetable()">Preview</button>
+        <button class="btn-export" onclick="exportTimetableCSV()">
+          <i class="fa fa-file-csv"></i> Export CSV
+        </button>
+      </div>
+      <div id="timetable-preview"></div>
+    </div>
+  </div>
+
+  <!-- TEACHER MODAL -->
+  <div id="teacherModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fa fa-user-tie"></i> Teacher List</h3>
+        <button class="modal-close" onclick="closeTeacherModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-search">
+          <input type="text" id="teacher-search" placeholder="Search teachers..." oninput="filterTeachers()">
+        </div>
+        <div id="modal-teacher-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEPARTMENT MODAL -->
+  <div id="departmentModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fa fa-building-columns"></i> Departments</h3>
+        <button class="modal-close" onclick="closeDepartmentModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-search">
+          <input type="text" id="department-search" placeholder="Search departments..." oninput="filterDepartments()">
+        </div>
+        <div id="modal-department-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEMESTER MODAL -->
+  <div id="semesterModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fa fa-calendar-days"></i> Semesters</h3>
+        <button class="modal-close" onclick="closeSemesterModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-search">
+          <input type="text" id="semester-search" placeholder="Search semesters..." oninput="filterSemesters()">
+        </div>
+        <div id="modal-semester-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBJECT MODAL -->
+  <div id="subjectModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fa fa-book-open-reader"></i> Subjects</h3>
+        <button class="modal-close" onclick="closeSubjectModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-search">
+          <input type="text" id="subject-search" placeholder="Search subjects..." oninput="filterSubjects()">
+        </div>
+        <div id="modal-subject-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROOM MODAL -->
+  <div id="roomModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fa fa-door-open"></i> Rooms</h3>
+        <button class="modal-close" onclick="closeRoomModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-search">
+          <input type="text" id="room-search" placeholder="Search rooms..." oninput="filterRooms()">
+        </div>
+        <div id="modal-room-list"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/*
+  Full admin.html script (single-file).
+  Key points:
+  - Teachers stored in Users collection; routes: /api/teachers (returns user objects with username).
+  - Schedule Overview shows nothing until filters are applied.
+  - Teacher selects are populated reliably from /api/teachers (username fallback to name).
+  - Other entity endpoints use /api/departments, /api/semesters, /api/subjects, /api/rooms, /api/assignments.
+*/
+
+const BASE_URL = "http://localhost:5000";
+
+// Auth check
+const user = JSON.parse(localStorage.getItem("currentUser"));
+if (!user || user.role !== "admin") location.href = "index.html";
+
+const weekdays = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+
+/* Local-only helpers retained for session/slots */
+function getField(key) { return localStorage.getItem(key); }
+function setField(key, val) { localStorage.setItem(key, val); }
+
+/* --- UI helpers --- */
+function showMsg(id, msg, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = `<div class="${type==='success'?'success-message':'error-message'}">
+    <i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> ${escapeHtml(msg)}
+  </div>`;
+  setTimeout(()=>el.innerHTML='',2500);
+}
+
+function escapeHtml(s){ return (s==null)?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+/* --- fetch wrapper --- */
+async function fetchJson(path, opts) {
+  const url = (typeof BASE_URL !== 'undefined' && BASE_URL) ? (BASE_URL + path) : path;
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    let body;
+    try { body = await res.json(); } catch(e) { body = await res.text().catch(()=>null); }
+    const message = (body && body.message) ? body.message : (typeof body === 'string' ? body : `Request failed ${res.status}`);
+    throw new Error(message || 'Request failed');
+  }
+  return res.json();
+}
+
+/* ------------------- TEACHERS (User-based) ------------------- */
+/* Robust functions to populate select and modal */
+
+async function fetchTeachersSafe() {
+  const url = (typeof BASE_URL !== 'undefined' && BASE_URL) ? (BASE_URL + '/api/teachers') : '/api/teachers';
+  const res = await fetch(url);
+  if (!res.ok) {
+    const txt = await res.text().catch(()=>null);
+    throw new Error(txt || `Failed to fetch teachers (${res.status})`);
+  }
+  const arr = await res.json();
+  // ensure username exists
+  return (arr || []).map(u => {
+    if (!u) return u;
+    if (!u.username && u.name) u.username = u.name;
+    return u;
+  });
+}
+
+async function renderTeacherModalList() {
+  const container = document.getElementById('modal-teacher-list');
+  if (!container) return;
+  try {
+    const teachers = await fetchTeachersSafe();
+    if (!teachers || teachers.length === 0) {
+      container.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No teachers added yet.</p>';
+      return;
+    }
+    const rows = teachers.map(t => {
+      const uname = escapeHtml(t.username || '');
+      const pwd = escapeHtml(t.password || '');
+      return `<tr>
+        <td>${uname}</td>
+        <td>${pwd}</td>
+        <td>
+          <button class="btn-edit" onclick="onEditTeacher('${t._id}','${uname}','${pwd}')">Edit</button>
+          <button class="btn-del" onclick="onDeleteTeacher('${t._id}')">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+    container.innerHTML = `<table>
+      <tr><th>Username</th><th>Password</th><th>Actions</th></tr>
+      ${rows}
+    </table>`;
+  } catch (err) {
+    console.error('renderTeacherModalList error:', err);
+    container.innerHTML = `<p style="color:red;">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+/* Teacher API helpers (keeps payload compatible with admin UI) */
+async function createTeacherAPI(name, password) {
+  return fetchJson('/api/teachers', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ name, password })
+  });
+}
+async function updateTeacherAPI(id, name, password) {
+  return fetchJson(`/api/teachers/${id}`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ name, password })
+  });
+}
+async function deleteTeacherAPI(id) {
+  return fetchJson(`/api/teachers/${id}`, { method: 'DELETE' });
+}
+
+/* CRUD Handlers wired to UI */
+async function addTeacher() {
+  const name = (document.getElementById('teacher-name')||{}).value?.trim();
+  const password = (document.getElementById('teacher-password')||{}).value;
+  if (!name) return showMsg('teacher-alert','Teacher username cannot be empty.','error');
+  if (!password || password.length < 4) return showMsg('teacher-alert','Password must be at least 4 characters.','error');
+  try {
+    await createTeacherAPI(name, password);
+    document.getElementById('teacher-name').value = '';
+    document.getElementById('teacher-password').value = '';
+    showMsg('teacher-alert','Teacher added successfully!','success');
+    await renderTeacherModalList();
+    await reloadOtherLists(); // repopulates selects including teacher select
+  } catch (err) {
+    showMsg('teacher-alert', err.message || String(err), 'error');
+  }
+}
+
+async function onEditTeacher(id, usernameEsc, passEsc) {
+  const currUsername = unescapeHtml(usernameEsc);
+  const currPass = unescapeHtml(passEsc);
+  const newName = prompt("Edit teacher username:", currUsername);
+  if (!newName || !newName.trim()) return;
+  const newPass = prompt("Edit password:", currPass);
+  if (!newPass || newPass.length < 4) { alert('Password must be at least 4 characters.'); return; }
+  try {
+    await updateTeacherAPI(id, newName.trim(), newPass);
+    showMsg('teacher-alert','Teacher updated successfully!','success');
+    await renderTeacherModalList();
+    await reloadOtherLists();
+  } catch (err) {
+    showMsg('teacher-alert', err.message || String(err), 'error');
+  }
+}
+
+async function onDeleteTeacher(id) {
+  if (!confirm('Delete this teacher? All associated assignments will remain.')) return;
+  try {
+    await deleteTeacherAPI(id);
+    showMsg('teacher-alert','Teacher deleted.','success');
+    await renderTeacherModalList();
+    await reloadOtherLists();
+  } catch (err) {
+    showMsg('teacher-alert', err.message || String(err), 'error');
+  }
+}
+
+function filterTeachers() {
+  const q = (document.getElementById('teacher-search')||{}).value?.toLowerCase() || '';
+  fetchTeachersSafe()
+    .then(arr => {
+      const filtered = (arr || []).filter(t =>
+        (t.username || '').toLowerCase().includes(q) ||
+        ((t.password || '').toLowerCase().includes(q))
+      );
+      const html = filtered.length ? `<table>
+        <tr><th>Username</th><th>Password</th><th>Actions</th></tr>
+        ${filtered.map(x=>`<tr>
+          <td>${escapeHtml(x.username)}</td>
+          <td>${escapeHtml(x.password)}</td>
+          <td>
+            <button class="btn-edit" onclick="onEditTeacher('${x._id}','${escapeHtml(x.username)}','${escapeHtml(x.password)}')">Edit</button>
+            <button class="btn-del" onclick="onDeleteTeacher('${x._id}')">Delete</button>
+          </td>
+        </tr>`).join('')}
+      </table>` : '<p style="text-align:center;color:#999;padding:20px;">No teachers found.</p>';
+      document.getElementById('modal-teacher-list').innerHTML = html;
+    })
+    .catch(err => {
+      console.error('filterTeachers error:', err);
+      document.getElementById('modal-teacher-list').innerHTML = `<p style="color:red;">${escapeHtml(err.message)}</p>`;
+    });
+}
+
+function unescapeHtml(s){ return (s||'').replace(/&#39;/g,"'").replace(/&quot;/g,'"'); }
+
+/* ------------------- DEPARTMENTS (API) ------------------- */
+async function fetchDepartments() { return fetchJson('/api/departments'); }
+async function createDepartmentAPI(name) { return fetchJson('/api/departments', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) }); }
+async function updateDepartmentAPI(id, name) { return fetchJson(`/api/departments/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) }); }
+async function deleteDepartmentAPI(id) { return fetchJson(`/api/departments/${id}`, { method:'DELETE' }); }
+
+async function renderDepartmentModalList() {
+  try {
+    const arr = await fetchDepartments();
+    const html = arr.length ? `<table>
+      <tr><th>Name</th><th>Actions</th></tr>
+      ${arr.map(x=>`<tr><td>${escapeHtml(x.name)}</td><td>
+        <button class="btn-edit" onclick="onEditDepartment('${x._id}','${escapeHtml(x.name)}')">Edit</button>
+        <button class="btn-del" onclick="onDeleteDepartment('${x._id}')">Delete</button>
+      </td></tr>`).join('')}
+    </table>` : '<p style="margin:1em 0;color:#999;">No departments added.</p>';
+    document.getElementById('modal-department-list').innerHTML = html;
+  } catch (err) {
+    document.getElementById('modal-department-list').innerHTML = `<p style="color:red;">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+async function addDepartment() {
+  const input = document.getElementById('department-name');
+  const val = (input && input.value || '').trim();
+  if (!val) return showMsg('department-alert','Enter department name.','error');
+  try {
+    await createDepartmentAPI(val);
+    input.value = '';
+    showMsg('department-alert','Department added!','success');
+    await renderDepartmentModalList();
+    await reloadOtherLists();
+  } catch (err) {
+    showMsg('department-alert', err.message, 'error');
+  }
+}
+
+function onEditDepartment(id, currentName) {
+  const newName = prompt("Edit department:", unescapeHtml(currentName));
+  if (!newName || !newName.trim()) return;
+  updateDepartmentAPI(id, newName.trim())
+    .then(()=> { showMsg('department-alert','Updated!','success'); renderDepartmentModalList(); reloadOtherLists(); })
+    .catch(err => showMsg('department-alert', err.message, 'error'));
+}
+function onDeleteDepartment(id) {
+  if (!confirm('Delete department?')) return;
+  deleteDepartmentAPI(id)
+    .then(()=> { showMsg('department-alert','Deleted.','success'); renderDepartmentModalList(); reloadOtherLists(); })
+    .catch(err => showMsg('department-alert', err.message, 'error'));
+}
+function filterDepartments() {
+  const q = (document.getElementById('department-search')||{}).value.toLowerCase();
+  fetchDepartments()
+    .then(arr => {
+      const filtered = arr.filter(d => d.name.toLowerCase().includes(q));
+      const html = filtered.length ? `<table>
+        <tr><th>Name</th><th>Actions</th></tr>
+        ${filtered.map(x=>`<tr><td>${escapeHtml(x.name)}</td><td>
+          <button class="btn-edit" onclick="onEditDepartment('${x._id}','${escapeHtml(x.name)}')">Edit</button>
+          <button class="btn-del" onclick="onDeleteDepartment('${x._id}')">Delete</button>
+        </td></tr>`).join('')}
+      </table>` : '<p style="margin:1em 0;color:#999;">No departments added.</p>';
+      document.getElementById('modal-department-list').innerHTML = html;
+    })
+    .catch(err => { document.getElementById('modal-department-list').innerHTML = `<p style="color:red;">${escapeHtml(err.message)}</p>`; });
+}
+
+/* ------------------- SEMESTERS (API) ------------------- */
+async function fetchSemesters() { return fetchJson('/api/semesters'); }
+async function createSemesterAPI(name) { return fetchJson('/api/semesters', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) }); }
+async function updateSemesterAPI(id, name) { return fetchJson(`/api/semesters/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) }); }
+async function deleteSemesterAPI(id) { return fetchJson(`/api/semesters/${id}`, { method:'DELETE' }); }
+
+async function renderSemesterModalList() {
+  try {
+    const arr = await fetchSemesters();
+    const html = arr.length ? `<table>
+      <tr><th>Name</th><th>Actions</th></tr>
+      ${arr.map(x=>`<tr><td>${escapeHtml(x.name)}</td><td>
+        <button class="btn-edit" onclick="onEditSemester('${x._id}','${escapeHtml(x.name)}')">Edit</button>
+        <button class="btn-del" onclick="onDeleteSemester('${x._id}')">Delete</button>
+      </td></tr>`).join('')}
+    </table>` : '<p style="margin:1em 0;color:#999;">No semesters added.</p>';
+    document.getElementById('modal-semester-list').innerHTML = html;
+  } catch (err) {
+    document.getElementById('modal-semester-list').innerHTML = `<p style="color:red;">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+async function addSemester() {
+  const input = document.getElementById('semester-name');
+  const val = (input && input.value || '').trim();
+  if (!val) return showMsg('semester-alert','Enter semester.','error');
+  try {
+    await createSemesterAPI(val);
+    input.value = '';
+    showMsg('semester-alert','Semester added!','success');
+    await renderSemesterModalList();
+    await reloadOtherLists();
+  } catch (err) {
+    showMsg('semester-alert', err.message, 'error');
+  }
+}
+function onEditSemester(id, currentNameEsc) {
+  const newName = prompt("Edit semester:", unescapeHtml(currentNameEsc));
+  if (!newName || !newName.trim()) return;
+  updateSemesterAPI(id, newName.trim())
+    .then(()=> { showMsg('semester-alert','Updated!','success'); renderSemesterModalList(); reloadOtherLists(); })
+    .catch(err => showMsg('semester-alert', err.message, 'error'));
+}
+function onDeleteSemester(id) {
+  if (!confirm('Delete semester?')) return;
+  deleteSemesterAPI(id).then(()=> { showMsg('semester-alert','Deleted.','success'); renderSemesterModalList(); reloadOtherLists(); })
+    .catch(err => showMsg('semester-alert', err.message, 'error'));
+}
+function filterSemesters() {
+  const q = (document.getElementById('semester-search')||{}).value.toLowerCase();
+  fetchSemesters()
+    .then(arr => {
+      const filtered = arr.filter(s => s.name.toLowerCase().includes(q));
+      const html = filtered.length ? `<table>
+        <tr><th>Name</th><th>Actions</th></tr>
+        ${filtered.map(x=>`<tr><td>${escapeHtml(x.name)}</td><td>
+          <button class="btn-edit" onclick="onEditSemester('${x._id}','${escapeHtml(x.name)}')">Edit</button>
+          <button class="btn-del" onclick="onDeleteSemester('${x._id}')">Delete</button>
+        </td></tr>`).join('')}
+      </table>` : '<p style="margin:1em 0;color:#999;">No semesters added.</p>';
+      document.getElementById('modal-semester-list').innerHTML = html;
+    })
+    .catch(err => { document.getElementById('modal-semester-list').innerHTML = `<p style="color:red;">${escapeHtml(err.message)}</p>`; });
+}
+
+/* ------------------- SUBJECTS (API) ------------------- */
+async function fetchSubjects() { return fetchJson('/api/subjects'); }
+async function createSubjectAPI(name) { return fetchJson('/api/subjects', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) }); }
+async function updateSubjectAPI(id, name) { return fetchJson(`/api/subjects/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) }); }
+async function deleteSubjectAPI(id) { return fetchJson(`/api/subjects/${id}`, { method:'DELETE' }); }
+
+async function renderSubjectModalList() {
+  try {
+    const arr = await fetchSubjects();
+    const html = arr.length ? `<table>
+      <tr><th>Name</th><th>Actions</th></tr>
+      ${arr.map(x=>`<tr><td>${escapeHtml(x.name)}</td><td>
+        <button class="btn-edit" onclick="onEditSubject('${x._id}','${escapeHtml(x.name)}')">Edit</button>
+        <button class="btn-del" onclick="onDeleteSubject('${x._id}')">Delete</button>
+      </td></tr>`).join('')}
+    </table>` : '<p style="margin:1em 0;color:#999;">No subjects added.</p>';
+    document.getElementById('modal-subject-list').innerHTML = html;
+  } catch (err) {
+    document.getElementById('modal-subject-list').innerHTML = `<p style="color:red;">${escapeHtml(err.message)}</p>`;
+  }
+}
+async function addSubject() {
+  const input = document.getElementById('subject-name');
+  const val = (input && input.value || '').trim();
+  if (!val) return showMsg('subject-alert','Enter subject.','error');
+  try {
+    await createSubjectAPI(val);
+    if (input) input.value = '';
+    showMsg('subject-alert','Subject added!','success');
+    await renderSubjectModalList();
+    await reloadOtherLists();
+  } catch (err) {
+    showMsg('subject-alert', err.message, 'error');
+  }
+}
+function onEditSubject(id, currentNameEsc) {
+  const newName = prompt("Edit subject:", unescapeHtml(currentNameEsc));
+  if (!newName || !newName.trim()) return;
+  updateSubjectAPI(id, newName.trim()).then(()=> { showMsg('subject-alert','Updated!','success'); renderSubjectModalList(); reloadOtherLists(); })
+    .catch(err => showMsg('subject-alert', err.message, 'error'));
+}
+function onDeleteSubject(id) {
+  if (!confirm('Delete subject?')) return;
+  deleteSubjectAPI(id).then(()=> { showMsg('subject-alert','Deleted.','success'); renderSubjectModalList(); reloadOtherLists(); })
+    .catch(err => showMsg('subject-alert', err.message, 'error'));
+}
+function filterSubjects() {
+  const q = (document.getElementById('subject-search')||{}).value.toLowerCase();
+  fetchSubjects().then(arr => {
+    const filtered = arr.filter(s => s.name.toLowerCase().includes(q));
+    const html = filtered.length ? `<table>
+      <tr><th>Name</th><th>Actions</th></tr>
+      ${filtered.map(x=>`<tr><td>${escapeHtml(x.name)}</td><td>
+        <button class="btn-edit" onclick="onEditSubject('${x._id}','${escapeHtml(x.name)}')">Edit</button>
+        <button class="btn-del" onclick="onDeleteSubject('${x._id}')">Delete</button>
+      </td></tr>`).join('')}
+    </table>` : '<p style="margin:1em 0;color:#999;">No subjects added.</p>';
+    document.getElementById('modal-subject-list').innerHTML = html;
+  }).catch(err => document.getElementById('modal-subject-list').innerHTML = `<p style="color:red;">${escapeHtml(err.message)}</p>`);
+}
+
+/* ------------------- ROOMS (API) ------------------- */
+async function fetchRooms() { return fetchJson('/api/rooms'); }
+async function createRoomAPI(name, type) { return fetchJson('/api/rooms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, type }) }); }
+async function updateRoomAPI(id, name, type) { return fetchJson(`/api/rooms/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, type }) }); }
+async function deleteRoomAPI(id) { return fetchJson(`/api/rooms/${id}`, { method:'DELETE' }); }
+
+async function renderRoomListModal() {
+  try {
+    const arr = await fetchRooms();
+    const html = arr.length ? `<table>
+      <tr><th>Room</th><th>Type</th><th>Actions</th></tr>
+      ${arr.map(x=>`<tr><td>${escapeHtml(x.name)}</td><td>${escapeHtml(x.type)}</td><td>
+        <button class="btn-edit" onclick="onEditRoom('${x._id}','${escapeHtml(x.name)}','${escapeHtml(x.type)}')">Edit</button>
+        <button class="btn-del" onclick="onDeleteRoom('${x._id}')">Delete</button>
+      </td></tr>`).join('')}
+    </table>` : '<p style="margin:1em 0;color:#999;">No rooms added.</p>';
+    document.getElementById('modal-room-list').innerHTML = html;
+  } catch (err) {
+    document.getElementById('modal-room-list').innerHTML = `<p style="color:red;">${escapeHtml(err.message)}</p>`;
+  }
+}
+async function addRoom() {
+  const name = (document.getElementById('room-name')||{}).value.trim();
+  const type = (document.getElementById('room-type')||{}).value;
+  if (!name || !type) return showMsg('room-alert','Fill all fields.','error');
+  try {
+    await createRoomAPI(name, type);
+    document.getElementById('room-name').value = '';
+    document.getElementById('room-type').value = '';
+    showMsg('room-alert','Room added!','success');
+    await renderRoomListModal();
+    await reloadOtherLists();
+  } catch (err) {
+    showMsg('room-alert', err.message, 'error');
+  }
+}
+function onEditRoom(id, nameEsc, typeEsc) {
+  const name = prompt("Edit room name:", unescapeHtml(nameEsc));
+  if (!name || !name.trim()) return;
+  const type = prompt("Edit type (Theory/Lab):", unescapeHtml(typeEsc));
+  if (!type || !type.trim()) return;
+  updateRoomAPI(id, name.trim(), type.trim()).then(()=> { showMsg('room-alert','Updated!','success'); renderRoomListModal(); reloadOtherLists(); })
+    .catch(err => showMsg('room-alert', err.message, 'error'));
+}
+function onDeleteRoom(id) {
+  if (!confirm('Delete room?')) return;
+  deleteRoomAPI(id).then(()=> { showMsg('room-alert','Deleted.','success'); renderRoomListModal(); reloadOtherLists(); })
+    .catch(err => showMsg('room-alert', err.message, 'error'));
+}
+function filterRooms() {
+  const q = (document.getElementById('room-search')||{}).value.toLowerCase();
+  fetchRooms().then(arr => {
+    const filtered = arr.filter(r => r.name.toLowerCase().includes(q) || (r.type||'').toLowerCase().includes(q));
+    const html = filtered.length ? `<table>
+      <tr><th>Room</th><th>Type</th><th>Actions</th></tr>
+      ${filtered.map(x=>`<tr><td>${escapeHtml(x.name)}</td><td>${escapeHtml(x.type)}</td><td>
+        <button class="btn-edit" onclick="onEditRoom('${x._id}','${escapeHtml(x.name)}','${escapeHtml(x.type)}')">Edit</button>
+        <button class="btn-del" onclick="onDeleteRoom('${x._id}')">Delete</button>
+      </td></tr>`).join('')}
+    </table>` : '<p style="margin:1em 0;color:#999;">No rooms added.</p>';
+    document.getElementById('modal-room-list').innerHTML = html;
+  }).catch(err => document.getElementById('modal-room-list').innerHTML = `<p style="color:red;">${escapeHtml(err.message)}</p>`);
+}
+
+/* ------------------- ASSIGNMENTS (API) ------------------- */
+async function fetchAssignments(filters = {}) {
+  const params = new URLSearchParams(filters);
+  return fetchJson('/api/assignments?' + params.toString());
+}
+async function deleteAssignmentAPI(id) { return fetchJson(`/api/assignments/${id}`, { method:'DELETE' }); }
+
+/* Show assignments ONLY when filters are applied */
+async function showAssignments() {
+  try {
+    const ft = (document.getElementById('filter-teacher')||{}).value;
+    const fd = (document.getElementById('filter-dept')||{}).value;
+    const fday = (document.getElementById('filter-day')||{}).value;
+
+    // If no filter is selected, keep the area empty with hint
+    if (!ft && !fd && !fday) {
+      document.getElementById('assignments-list').innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Apply filters to view assignments.</p>';
+      return;
+    }
+
+    const filters = {};
+    if (ft) filters.teacher = ft;
+    if (fd) filters.department = fd;
+    if (fday) filters.day = fday;
+
+    const res = await fetchAssignments(filters);
+    const html = res.length ? `<table>
+      <tr><th>Teacher</th><th>Department</th><th>Semester</th><th>Subject</th><th>Room</th><th>Day</th><th>Slot</th><th>Actions</th></tr>
+      ${res.map(r => `<tr>
+        <td>${escapeHtml(r.teacher)}</td>
+        <td>${escapeHtml(r.department)}</td>
+        <td>${escapeHtml(r.semester)}</td>
+        <td>${escapeHtml(r.subject)}</td>
+        <td>${escapeHtml(r.room)}</td>
+        <td>${escapeHtml(r.day)}</td>
+        <td>${escapeHtml(String(r.slot))}</td>
+        <td><button class="btn-del" onclick="delAssignment('${r._id}')">Delete</button></td>
+      </tr>`).join('')}
+    </table>` : '<p style="margin-top:10px;color:#999;">No assignments found for selected filters.</p>';
+    document.getElementById('assignments-list').innerHTML = html;
+  } catch (err) {
+    console.error(err);
+    document.getElementById('assignments-list').innerHTML = `<p style="color:red;">${escapeHtml(err.message)}</p>`;
+  }
+}
+function delAssignment(id) {
+  if (!confirm('Delete this assignment?')) return;
+  deleteAssignmentAPI(id)
+    .then(()=> { showMsg('slot-alert','Assignment deleted.','success'); showAssignments(); })
+    .catch(err => showMsg('slot-alert', err.message, 'error'));
+}
+
+/* ------------------- TIMETABLE PREVIEW ------------------- */
+async function previewTimetable() {
+  const dept = document.getElementById('timetable-dept').value;
+  const sem = document.getElementById('timetable-sem').value;
+  if (!dept || !sem) { document.getElementById('timetable-preview').innerHTML = ''; return; }
+
+  try {
+    const nslots = +(getField('numSlots') || '5');
+    const ta = await fetchAssignments({ department: dept, semester: sem });
+
+    let html = `<table class='timetable'><tr><th>Slot \\ Day</th>${weekdays.map(w=>`<th>${w}</th>`).join('')}</tr>`;
+    for (let slot=1; slot<=nslots; slot++) {
+      html += `<tr><th>${slot}</th>`;
+      for (let wd=0; wd<5; wd++) {
+        const found = ta.find(t => t.day === weekdays[wd] && Number(t.slot) === slot);
+        html += `<td>${found ? `<strong>${escapeHtml(found.subject)}</strong><br><span class='badge badge-success'>${escapeHtml(found.room)}</span><br><span style="color:#4b69ad;font-size:0.9em">${escapeHtml(found.teacher)}</span>` : '—'}</td>`;
+      }
+      html += `</tr>`;
+    }
+    html += `</table>`;
+    document.getElementById('timetable-preview').innerHTML = html;
+  } catch (err) {
+    document.getElementById('timetable-preview').innerHTML = `<p style="color:red;">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+async function exportTimetableCSV() {
+  const dept = document.getElementById('timetable-dept').value;
+  const sem = document.getElementById('timetable-sem').value;
+  if (!dept || !sem) { alert('Please select department and semester first.'); return; }
+  try {
+    const ta = await fetchAssignments({ department: dept, semester: sem });
+    const nslots = +(getField('numSlots') || '5');
+    let csv = 'Slot/Day,Monday,Tuesday,Wednesday,Thursday,Friday\n';
+    for (let slot=1; slot<=nslots; slot++) {
+      const row = [slot];
+      for (let wd=0; wd<5; wd++) {
+        const f = ta.find(t => t.day === weekdays[wd] && Number(t.slot) === slot);
+        row.push(f ? `${f.subject} (${f.room} - ${f.teacher})` : '');
+      }
+      csv += row.join(',') + '\n';
+    }
+    const blob = new Blob([csv], { type:'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `timetable_${dept}_sem${sem}.csv`;
+    link.click();
+  } catch (err) {
+    alert(err.message || 'Failed to export CSV');
+  }
+}
+
+/* ------------------- reloadOtherLists: populate selects from API ------------------- */
+async function reloadOtherLists() {
+  try {
+    const [teachers, depts, sems] = await Promise.all([
+      fetchTeachersSafe().catch(()=>[]),
+      fetchDepartments().catch(()=>[]),
+      fetchSemesters().catch(()=>[])
+    ]);
+
+    const selT = document.getElementById('filter-teacher');
+    const selD = document.getElementById('filter-dept');
+    const ttDept = document.getElementById('timetable-dept');
+    const ttSem = document.getElementById('timetable-sem');
+
+    if (selT) selT.innerHTML = `<option value="">All Teachers</option>${(teachers||[]).map(x=>`<option value="${escapeHtml(x.username||x.name||'')}">${escapeHtml(x.username||x.name||'')}</option>`).join('')}`;
+    if (selD) selD.innerHTML = `<option value="">All Departments</option>${(depts||[]).map(x=>`<option value="${escapeHtml(x.name)}">${escapeHtml(x.name)}</option>`).join('')}`;
+    if (ttDept) ttDept.innerHTML = `<option value="">-- Select Department --</option>${(depts||[]).map(x=>`<option value="${escapeHtml(x.name)}">${escapeHtml(x.name)}</option>`).join('')}`;
+    if (ttSem) ttSem.innerHTML = `<option value="">-- Select Semester --</option>${(sems||[]).map(x=>`<option value="${escapeHtml(x.name)}">${escapeHtml(x.name)}</option>`).join('')}`;
+  } catch (err) {
+    console.error("reloadOtherLists error:", err);
+  }
+}
+
+/* ------------------- TIME SLOTS (local for now) ------------------- */
+function getNumSlots() { return +(getField('numSlots') || '5'); }
+function setNumSlots() {
+  const n = document.getElementById('num-slots').value.trim();
+  if (!n || isNaN(n) || n<1 || n>12) return showMsg('slot-alert','Enter 1-12 only.','error');
+  setField('numSlots', n);
+  showMsg('slot-alert','Time slots saved!','success');
+  document.getElementById('current-slots').textContent = n;
+}
+function updateNumSlotsView() { document.getElementById('current-slots').textContent = getNumSlots(); }
+
+/* Expose modal and utility functions used by HTML */
+window.showTeacherModal = async function(){ document.getElementById('teacherModal').style.display='block'; await renderTeacherModalList(); };
+window.closeTeacherModal = function(){ document.getElementById('teacherModal').style.display='none'; };
+
+window.showDepartmentModal = async function(){ document.getElementById('departmentModal').style.display='block'; await renderDepartmentModalList(); };
+window.closeDepartmentModal = function(){ document.getElementById('departmentModal').style.display='none'; };
+
+window.showSemesterModal = async function(){ document.getElementById('semesterModal').style.display='block'; await renderSemesterModalList(); };
+window.closeSemesterModal = function(){ document.getElementById('semesterModal').style.display='none'; };
+
+window.showSubjectModal = async function(){ document.getElementById('subjectModal').style.display='block'; await renderSubjectModalList(); };
+window.closeSubjectModal = function(){ document.getElementById('subjectModal').style.display='none'; };
+
+window.showRoomModal = async function(){ document.getElementById('roomModal').style.display='block'; await renderRoomListModal(); };
+window.closeRoomModal = function(){ document.getElementById('roomModal').style.display='none'; };
+
+function logout(){
+  if (confirm('Are you sure you want to logout?')) {
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('currentTeacherName');
+    window.location.href = 'index.html';
+  }
+}
+/* Init on load */
+window.addEventListener('load', async () => {
+  await reloadOtherLists();
+  updateNumSlotsView();
+  // Do not call showAssignments() on load — assignments should appear only after filters are applied
+});
+
+/* Close modal when clicking outside */
+window.onclick = function(event) {
+  const modals = ['teacherModal','departmentModal','semesterModal','subjectModal','roomModal'];
+  modals.forEach(id => {
+    const modal = document.getElementById(id);
+    if (modal && event.target == modal) modal.style.display = 'none';
+  });
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student – View Timetable</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <style>
+    /* small tweaks to align with admin styles/messages */
+    .error-message, .success-message {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:6px;
+    }
+    .error-message { background:#fdecea; color:#b91c1c; }
+    .success-message { background:#ecfdf5; color:#065f46; }
+    body{
+      background: linear-gradient(135deg, #183072 0%, #2c3b77 100%);
+    }
+  </style>
+</head>
+<body>
+  <button class="logout-btn" onclick="logout()">
+    <i class="fas fa-sign-out-alt"></i> Logout
+  </button>
+
+  <div class="main">
+    <h1><i class="fa fa-user-graduate"></i> Student Timetable</h1>
+    
+    <div class="card" style="max-width:900px;margin:auto;">
+      <div class="card-title"><i class="fa fa-eye"></i> View Your Timetable</div>
+      <div id="stud-alert"></div>
+      
+      <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+        <select id="stud-dept" style="flex:1;min-width:200px;"></select>
+        <select id="stud-sem" style="flex:1;min-width:200px;"></select>
+      </div>
+      
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+        <button class="btn-show" onclick="showStudentTimetable()">
+          <i class="fa fa-eye"></i> Show Timetable
+        </button>
+        <button class="btn-export" onclick="exportCSV()">
+          <i class="fa fa-file-csv"></i> Export CSV
+        </button>
+      </div>
+      
+      <div class="timetable-note">
+        <i class="fas fa-info-circle"></i> 
+        Timetable shows classes from Monday to Friday with assigned time slots.
+      </div>
+      
+      <div id="stud-timetable"></div>
+    </div>
+  </div>
+
+<script>
+/*
+  Updated student.html to use backend APIs (same pattern as admin.html).
+  - Fetch departments & semesters from /api endpoints.
+  - Fetch assignments from /api/assignments with query params.
+  - Uses localStorage numSlots for number of slots (same key as admin).
+  - Shows friendly messages on error/success.
+*/
+
+const BASE_URL = "http://localhost:5000";
+
+// Auth check (unchanged)
+const user = JSON.parse(localStorage.getItem("currentUser"));
+if (!user || user.role !== "student") location.href = "index.html";
+
+const weekdays = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+
+/* --- small UI helpers --- */
+function showMsg(id, msg, type='error') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = `<div class="${type==='success'?'success-message':'error-message'}">
+    <i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i>
+    ${escapeHtml(msg)}
+  </div>`;
+  setTimeout(()=> { if (el) el.innerHTML = ''; }, 3000);
+}
+function escapeHtml(s){ return (s==null)?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+/* --- fetch wrapper (mirrors admin) --- */
+async function fetchJson(path, opts) {
+  const url = (typeof BASE_URL !== 'undefined' && BASE_URL) ? (BASE_URL + path) : path;
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    let body;
+    try { body = await res.json(); } catch(e) { body = await res.text().catch(()=>null); }
+    const message = (body && body.message) ? body.message : (typeof body === 'string' ? body : `Request failed ${res.status}`);
+    throw new Error(message || 'Request failed');
+  }
+  return res.json();
+}
+
+/* --- API helpers --- */
+async function fetchDepartments() { return fetchJson('/api/departments'); }
+async function fetchSemesters() { return fetchJson('/api/semesters'); }
+async function fetchAssignments(filters = {}) {
+  const params = new URLSearchParams(filters);
+  return fetchJson('/api/assignments?' + params.toString());
+}
+
+/* --- local helpers --- */
+function getField(k) { return localStorage.getItem(k); }
+
+/* --- initialize selects by fetching from backend --- */
+async function reloadLists() {
+  try {
+    const [depts, sems] = await Promise.all([
+      fetchDepartments().catch(()=>[]),
+      fetchSemesters().catch(()=>[])
+    ]);
+
+    const deptEl = document.getElementById('stud-dept');
+    const semEl = document.getElementById('stud-sem');
+
+    if (deptEl) {
+      deptEl.innerHTML = `<option value="">-- Select Department --</option>` +
+        (depts || []).map(x => `<option value="${escapeHtml(x.name)}">${escapeHtml(x.name)}</option>`).join('');
+    }
+
+    if (semEl) {
+      semEl.innerHTML = `<option value="">-- Select Semester --</option>` +
+        (sems || []).map(x => `<option value="${escapeHtml(x.name)}">${escapeHtml(x.name)}</option>`).join('');
+    }
+  } catch (err) {
+    console.error('reloadLists error:', err);
+    showMsg('stud-alert', 'Failed to load departments/semesters: ' + (err.message || err), 'error');
+  }
+}
+
+/* --- show timetable using backend assignments --- */
+async function showStudentTimetable() {
+  const dept = document.getElementById('stud-dept').value;
+  const sem = document.getElementById('stud-sem').value;
+
+  if (!dept || !sem) {
+    document.getElementById('stud-timetable').innerHTML = '';
+    showMsg('stud-alert', 'Please select both department and semester.', 'error');
+    return;
+  }
+
+  try {
+    const ta = await fetchAssignments({ department: dept, semester: sem }).catch(()=>[]);
+    const nslots = +(getField('numSlots') || '5');
+
+    if (!ta || ta.length === 0) {
+      document.getElementById('stud-timetable').innerHTML =
+        '<p style="text-align:center;color:#999;padding:30px;"><i class="fas fa-calendar-xmark" style="font-size:3rem;display:block;margin-bottom:15px;"></i>No timetable available for this department and semester.</p>';
+      return;
+    }
+
+    let html = `<table class='timetable'>
+      <tr>
+        <th>Slot \\ Day</th>
+        ${weekdays.map(w=>`<th>${w}</th>`).join('')}
+      </tr>`;
+
+    for (let slot = 1; slot <= nslots; slot++) {
+      html += `<tr><th>Slot ${slot}</th>`;
+      for (let wd = 0; wd < 5; wd++) {
+        const found = ta.find(t => t.day === weekdays[wd] && Number(t.slot) === slot);
+        if (found) {
+          html += `<td>
+            <strong style="color:#1e3c72;font-size:1rem;">${escapeHtml(found.subject)}</strong><br>
+            <span class='badge badge-success'>${escapeHtml(found.room)}</span><br>
+            <span style="color:#4b69ad;font-size:0.9em;">
+              <i class="fas fa-chalkboard-user"></i> ${escapeHtml(found.teacher)}
+            </span>
+          </td>`;
+        } else {
+          html += `<td style="color:#ccc;font-size:1.2rem;">—</td>`;
+        }
+      }
+      html += '</tr>';
+    }
+
+    html += '</table>';
+    document.getElementById('stud-timetable').innerHTML = html;
+  } catch (err) {
+    console.error('showStudentTimetable error:', err);
+    document.getElementById('stud-timetable').innerHTML = `<p style="color:red;">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+/* --- export CSV (uses backend assignments) --- */
+async function exportCSV() {
+  const dept = document.getElementById('stud-dept').value;
+  const sem = document.getElementById('stud-sem').value;
+
+  if (!dept || !sem) {
+    alert('Please select department and semester first.');
+    return;
+  }
+
+  try {
+    const ta = await fetchAssignments({ department: dept, semester: sem }).catch(()=>[]);
+    const nslots = +(getField('numSlots') || '5');
+
+    if (!ta || ta.length === 0) {
+      alert('No timetable data available to export.');
+      return;
+    }
+
+    let csv = 'Slot/Day,Monday,Tuesday,Wednesday,Thursday,Friday\n';
+    for (let slot = 1; slot <= nslots; slot++) {
+      const row = [`Slot ${slot}`];
+      for (let wd = 0; wd < 5; wd++) {
+        const f = ta.find(t => t.day === weekdays[wd] && Number(t.slot) === slot);
+        row.push(f ? `${f.subject} (${f.room} - ${f.teacher})` : '');
+      }
+      csv += row.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',') + '\n';
+    }
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `timetable_${dept}_sem${sem}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+
+    showMsg('stud-alert', 'Timetable exported successfully!', 'success');
+  } catch (err) {
+    console.error('exportCSV error:', err);
+    alert(err.message || 'Failed to export CSV');
+  }
+}
+
+/* logout (unchanged) */
+function logout() {
+  if (confirm('Are you sure you want to logout?')) {
+    localStorage.removeItem('currentUser');
+    window.location.href = 'index.html';
+  }
+}
+
+/* init on load */
+window.addEventListener('load', async () => {
+  await reloadLists();
+  // leave timetable empty until user selects and clicks Show
+});
+</script>
+</body>
+</html>

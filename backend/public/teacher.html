@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher – Timetable Assignment</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+  
+    body{
+      background: linear-gradient(135deg, #183072 0%, #2c3b77 100%);
+    }
+  </style>
+</head>
+<body>
+  <button class="logout-btn" onclick="logout()">
+    <i class="fas fa-sign-out-alt"></i> Logout
+  </button>
+
+  <div class="main">
+    <h1><i class="fa fa-person-chalkboard"></i> Teacher Assignment</h1>
+    <p style="color:white;margin-top:-20px;margin-bottom:20px;font-size:1.1rem;">
+      Welcome, <strong id="teacher-name-display"></strong>
+    </p>
+
+    <div class="card" style="max-width:650px;margin:auto;">
+      <div class="card-title"><i class="fa fa-calendar-plus"></i> Assign a Lecture</div>
+      <div id="assign-alert"></div>
+      <div id="conflict-warning"></div>
+
+      <select id="sel-dept"><option value="">Select Department</option></select>
+      <select id="sel-sem"><option value="">Select Semester</option></select>
+      <select id="sel-subj"><option value="">Select Subject</option></select>
+      <select id="sel-room"><option value="">Select Room</option></select>
+      <select id="sel-day">
+        <option value="">Select Day</option>
+        <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+        <option>Thursday</option><option>Friday</option>
+      </select>
+      
+      <div id="slots-bar"></div>
+      <button class="btn-add" style="margin-top:15px" id="btn-assign">Assign Slot</button>
+    </div>
+
+    <!-- MY ASSIGNMENTS -->
+    <div class="card" style="max-width:900px;margin:30px auto;">
+      <div class="card-title"><i class="fa fa-list-check"></i> My Assignments</div>
+      <div id="my-assignments"></div>
+    </div>
+  </div>
+
+<script>
+const BASE_URL = ""; // set "http://localhost:5000" if frontend is served via file:// or different origin
+
+// Auth
+const user = JSON.parse(localStorage.getItem("currentUser"));
+if (!user || user.role !== "teacher") {
+  location.href = "index.html";
+}
+const teacherName = localStorage.getItem('currentTeacherName') || user.username;
+document.getElementById('teacher-name-display').textContent = teacherName;
+
+// Helpers
+function escapeHtml(s){ return (s==null)?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function showMsg(id, msg, type='success') {
+  const el = document.getElementById(id);
+  el.innerHTML = `<div class="${type==='success'?'success-message':'error-message'}"><i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> ${escapeHtml(msg)}</div>`;
+  setTimeout(()=> el.innerHTML = '', 3000);
+}
+function showConflict(msg) {
+  const el = document.getElementById('conflict-warning');
+  el.innerHTML = `<div class="conflict-warning"><i class="fas fa-exclamation-triangle"></i><div><strong>Conflict Detected:</strong> ${escapeHtml(msg)}</div></div>`;
+}
+function clearConflict() { document.getElementById('conflict-warning').innerHTML = ''; }
+
+async function fetchJson(path, opts) {
+  const res = await fetch(BASE_URL + path, opts);
+  if (!res.ok) {
+    let body;
+    try { body = await res.json(); } catch(e) { body = await res.text().catch(()=>null); }
+    const msg = (body && body.message) ? body.message : (typeof body === 'string' ? body : `Request failed ${res.status}`);
+    throw new Error(msg || 'Request failed');
+  }
+  return res.json();
+}
+
+// Dropdowns
+async function populateSelectFromApi(id, apiPath, label) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  try {
+    const items = await fetchJson(apiPath);
+    const options = (items || []).map(it => {
+      const val = (typeof it === 'string') ? it : (it.name ?? it.username ?? it._id ?? '');
+      return `<option value="${escapeHtml(val)}">${escapeHtml(val)}</option>`;
+    }).join('');
+    el.innerHTML = `<option value="">Select ${label}</option>${options}`;
+  } catch (err) {
+    console.warn(`Failed to load ${label} from API:`, err.message);
+    const stored = JSON.parse(localStorage.getItem(id.replace('sel-','') + 's') || '[]');
+    const options = (stored || []).map(it => `<option value="${escapeHtml(it.name||it)}">${escapeHtml(it.name||it)}</option>`).join('');
+    el.innerHTML = `<option value="">Select ${label}</option>${options}`;
+  }
+}
+
+async function loadDropdowns() {
+  await Promise.all([
+    populateSelectFromApi('sel-dept','/api/departments','Department'),
+    populateSelectFromApi('sel-sem','/api/semesters','Semester'),
+    populateSelectFromApi('sel-subj','/api/subjects','Subject'),
+    populateSelectFromApi('sel-room','/api/rooms','Room')
+  ]);
+}
+
+// Assignments API
+async function fetchAssignments(filters={}) {
+  const params = new URLSearchParams(filters).toString();
+  return fetchJson(`/api/assignments${params ? '?' + params : ''}`);
+}
+async function createAssignment(data) {
+  return fetchJson('/api/assignments', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  });
+}
+async function deleteAssignmentAPI(id) {
+  return fetchJson(`/api/assignments/${id}`, { method: 'DELETE' });
+}
+
+// Slots UI
+let slotSel = 0;
+
+async function showSlots() {
+  const n = +(localStorage.getItem('numSlots') || '5');
+  const day = document.getElementById('sel-day').value;
+  const room = document.getElementById('sel-room').value;
+  const dept = document.getElementById('sel-dept').value;
+  const sem = document.getElementById('sel-sem').value;
+
+  if (!day || !room || !dept || !sem) {
+    document.getElementById('slots-bar').innerHTML = '<div class="timetable-note">Select all fields above to see available slots</div>';
+    return;
+  }
+
+  try {
+    const [teacherDay, deptDay] = await Promise.all([
+      fetchAssignments({ teacher: teacherName, day }),
+      fetchAssignments({ department: dept, semester: sem, day })
+    ]);
+
+    let html = '';
+    for (let i=1; i<=n; i++) {
+      const teacherBooked = (teacherDay || []).find(a => Number(a.slot) === i);
+      const slotTakenInSemester = (deptDay || []).find(a => Number(a.slot) === i);
+      const roomBooked = slotTakenInSemester && slotTakenInSemester.room === room && Number(slotTakenInSemester.slot) === i;
+      const taken = teacherBooked || roomBooked;
+      html += `<button type="button" class="slot-btn" onclick="selSlot(${i})" ${taken ? 'disabled' : ''}>${taken ? '<span class="badge badge-booked">✗ Booked</span>' : `Slot ${i}`}</button>`;
+    }
+    document.getElementById('slots-bar').innerHTML = html;
+    slotSel = 0;
+    clearConflict();
+  } catch (err) {
+    console.error('showSlots error:', err);
+    document.getElementById('slots-bar').innerHTML = `<div class="timetable-note">Unable to load slots: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function selSlot(i) {
+  slotSel = i;
+  const btns = document.querySelectorAll('.slot-btn');
+  btns.forEach(b => b.classList.remove('btn-edit'));
+  if (btns[i-1]) btns[i-1].classList.add('btn-edit');
+  clearConflict();
+}
+
+// Assignment creation with strict checks
+async function assignSlot() {
+  const dept = document.getElementById('sel-dept').value;
+  const sem = document.getElementById('sel-sem').value;
+  const subj = document.getElementById('sel-subj').value;
+  const room = document.getElementById('sel-room').value;
+  const day = document.getElementById('sel-day').value;
+
+  if (!dept || !sem || !subj || !room || !day || !slotSel) {
+    showMsg('assign-alert','All fields are required. Please select a time slot.','error');
+    return;
+  }
+
+  try {
+    // Fetch relevant sets and check constraints
+    const [teacherDay, dayAll, deptSemDay] = await Promise.all([
+      fetchAssignments({ teacher: teacherName, day }),               // teacher's assignments on that day
+      fetchAssignments({ day }),                                    // all assignments on that day
+      fetchAssignments({ department: dept, semester: sem, day })     // assignments in this dept+sem on that day
+    ]);
+
+    // 1) Teacher cannot have two classes in same slot
+    if ((teacherDay || []).find(a => Number(a.slot) === slotSel)) {
+      showConflict(`You already have a class on ${day} at Slot ${slotSel}.`);
+      showMsg('assign-alert','You are already scheduled at this time.','error');
+      return;
+    }
+
+    // 2) Room cannot be used by more than one class at same time (same day+slot)
+    if ((dayAll || []).find(a => Number(a.slot) === slotSel && a.room === room)) {
+      showConflict(`Room "${room}" is already booked on ${day} at Slot ${slotSel}.`);
+      showMsg('assign-alert','This room is already occupied at this time.','error');
+      return;
+    }
+
+    // 3) Subject must be assigned to only one teacher per slot (global per day+slot)
+    if ((dayAll || []).find(a => Number(a.slot) === slotSel && a.subject === subj)) {
+      showConflict(`Subject "${subj}" is already assigned in Slot ${slotSel} on ${day}.`);
+      showMsg('assign-alert','This subject is already scheduled in that slot.','error');
+      return;
+    }
+
+    // 4) Semester cannot have two subjects scheduled at same time (dept+semester+day+slot)
+    if ((deptSemDay || []).find(a => Number(a.slot) === slotSel)) {
+      showConflict(`Semester ${sem} for ${dept} already has a subject scheduled at Slot ${slotSel} on ${day}.`);
+      showMsg('assign-alert','This semester already has a class at that time.','error');
+      return;
+    }
+
+    // 5) Prevent duplicate identical timetable entry
+    if ((dayAll || []).find(a =>
+      a.teacher === teacherName &&
+      a.department === dept &&
+      a.semester === sem &&
+      a.subject === subj &&
+      a.room === room &&
+      Number(a.slot) === slotSel &&
+      a.day === day
+    )) {
+      showConflict('This exact assignment already exists.');
+      showMsg('assign-alert','Duplicate entry.','error');
+      return;
+    }
+
+    // All checks passed -> create assignment
+    await createAssignment({
+      teacher: teacherName,
+      department: dept,
+      semester: sem,
+      subject: subj,
+      room,
+      day,
+      slot: slotSel
+    });
+
+    showMsg('assign-alert','✅ Slot assigned successfully!','success');
+    slotSel = 0;
+    await loadMyAssignments();
+    await showSlots();
+  } catch (err) {
+    console.error('assignSlot error:', err);
+    showMsg('assign-alert', err.message || 'Failed to assign slot', 'error');
+  }
+}
+
+// My assignments for this teacher
+async function loadMyAssignments() {
+  try {
+    const my = await fetchAssignments({ teacher: teacherName });
+    const container = document.getElementById('my-assignments');
+    if (!my || my.length === 0) {
+      container.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No assignments yet.</p>';
+      return;
+    }
+
+    const order = { Monday:1, Tuesday:2, Wednesday:3, Thursday:4, Friday:5 };
+    my.sort((a,b) => (order[a.day] - order[b.day]) || (Number(a.slot) - Number(b.slot)));
+
+    let html = '<table><tr><th>Department</th><th>Semester</th><th>Subject</th><th>Room</th><th>Day</th><th>Slot</th><th>Actions</th></tr>';
+    my.forEach(r => {
+      html += `<tr>
+        <td>${escapeHtml(r.department)}</td>
+        <td>${escapeHtml(r.semester)}</td>
+        <td>${escapeHtml(r.subject)}</td>
+        <td>${escapeHtml(r.room)}</td>
+        <td>${escapeHtml(r.day)}</td>
+        <td>${escapeHtml(r.slot)}</td>
+        <td>
+          <button class="btn-edit" onclick="editAssignment('${r._id}')">Edit</button>
+          <button class="btn-del" onclick="deleteAssignment('${r._id}')">Delete</button>
+        </td>
+      </tr>`;
+    });
+    html += '</table>';
+    container.innerHTML = html;
+  } catch (err) {
+    console.error('loadMyAssignments error:', err);
+    document.getElementById('my-assignments').innerHTML = `<p style="color:red;">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+async function deleteAssignment(id, silent=false) {
+  if (!silent && !confirm('Delete this assignment?')) return;
+  try {
+    await deleteAssignmentAPI(id);
+    if (!silent) showMsg('assign-alert','Assignment deleted.','success');
+    await loadMyAssignments();
+    await showSlots();
+  } catch (err) {
+    console.error('deleteAssignment error:', err);
+    showMsg('assign-alert', err.message || 'Failed to delete', 'error');
+  }
+}
+
+async function editAssignment(id) {
+  try {
+    const all = await fetchAssignments({});
+    const a = (all || []).find(x => x._id === id);
+    if (!a) { showMsg('assign-alert','Assignment not found','error'); return; }
+
+    document.getElementById('sel-dept').value = a.department;
+    document.getElementById('sel-sem').value = a.semester;
+    document.getElementById('sel-subj').value = a.subject;
+    document.getElementById('sel-room').value = a.room;
+    document.getElementById('sel-day').value = a.day;
+
+    // remove existing and let teacher reassign
+    await deleteAssignmentAPI(id);
+    await loadMyAssignments();
+    await showSlots();
+
+    setTimeout(()=> selSlot(Number(a.slot)), 200);
+    showMsg('assign-alert','Assignment loaded for editing. Modify and reassign.','success');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (err) {
+    console.error('editAssignment error:', err);
+    showMsg('assign-alert', err.message || 'Failed to load assignment for edit','error');
+  }
+}
+
+// Event wiring
+document.getElementById('sel-day').addEventListener('change', showSlots);
+document.getElementById('sel-room').addEventListener('change', showSlots);
+document.getElementById('sel-dept').addEventListener('change', showSlots);
+document.getElementById('sel-sem').addEventListener('change', showSlots);
+document.getElementById('btn-assign').addEventListener('click', assignSlot);
+
+function logout(){
+  if (confirm('Are you sure you want to logout?')) {
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('currentTeacherName');
+    window.location.href = 'index.html';
+  }
+}
+
+window.addEventListener('load', async () => {
+  await loadDropdowns();
+  await loadMyAssignments();
+});
+</script>
+</body>
+</html>
