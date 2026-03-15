@@ -1,8 +1,1 @@
-working properly
-only user authentication implemeted
-other are not implemeted yet..
 
-
-changes made
-teacher data also stored in USER collection do login works for teacher that is adde dby admin
-logout buuto of admin working now
