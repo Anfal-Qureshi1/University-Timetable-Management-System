@@ -1,96 +1,137 @@
 # University Timetable Management System
 
-This project is a **web-based solution** designed to automate and simplify the complex task of university timetable management. It addresses the common issues of manual systems, such as scheduling conflicts, time-consuming updates, and the lack of a centralized platform for all university stakeholders.
+A web-based academic prototype for managing university timetable data, users, and lecture assignments through a central interface.
 
----
+> **Project status:** Academic prototype. The repository implements timetable data management and manual assignment workflows. It does **not** currently include an automatic timetable optimization solver or production-grade authentication.
 
-## ### Problem Statement
+## Purpose
 
-Manual timetable management often leads to:
+University timetable data can become difficult to manage when departments, semesters, teachers, subjects, rooms, and lecture assignments are handled separately. This project brings those entities into one MongoDB-backed application with dedicated views for different user roles.
 
-**Time inefficiency**: Creating schedules manually takes significant effort.
+## Implemented features
 
+### Role-oriented interface
 
-**Conflicts**: Frequent clashes between teachers, rooms, and class sections.
+The project contains separate pages for:
 
+- **Admin**
+- **Teacher**
+- **Student**
 
-**Update Difficulties**: Hard to manage and communicate changes once a schedule is set.
+A login endpoint returns the user's configured role so the frontend can direct the user to the appropriate experience.
 
+### Timetable data management
 
-**Fragmentation**: No single system for administrators, teachers, and students to access information.
+The backend includes models and REST routes for:
 
+- Departments
+- Semesters
+- Teachers
+- Subjects
+- Rooms
+- Lecture assignments
+- Users
 
+Assignments can be created, viewed, updated, deleted, and filtered using fields such as teacher, department, semester, and day.
 
-## ### Objectives
+### Static web frontend
 
-The primary goal is to **automate timetable management**.
+HTML, CSS, and JavaScript pages are served directly by the Express backend, keeping the prototype simple to run locally.
 
-**Accuracy**: Drastically reduce scheduling conflicts and errors.
+## Tech stack
 
-
-**Security**: Provide role-based access to ensure data integrity.
-
-
-**Accessibility**: Ensure easy timetable viewing for all user types.
-
-
-
----
-
-## ### System Features
-
-### **Role-Based Access Control**
-
-The system provides three distinct roles with specialized features:
-
-| Role | Key Features |
+| Layer | Technology |
 | --- | --- |
-| **Admin** | Manage teachers, departments, semesters, subjects, and rooms; set daily time slots; view, preview, and export full timetables.
+| Frontend | HTML, CSS, JavaScript |
+| Backend | Node.js, Express |
+| Database | MongoDB, Mongoose |
+| Development | npm, nodemon |
 
- |
-| **Teacher** | Assign lectures to available slots with built-in conflict detection; view, edit, or delete personal schedules.
+## Repository structure
 
- |
-| **Student** | View timetables filtered by department and semester; export schedules as CSV files.
+```text
+University-Timetable-Management-System/
+├── backend/
+│   ├── models/
+│   ├── routes/
+│   ├── public/
+│   │   ├── admin.html
+│   │   ├── teacher.html
+│   │   ├── student.html
+│   │   └── style.css
+│   ├── db.js
+│   ├── server.js
+│   └── package.json
+└── README.md
+```
 
- |
+## Run locally
 
----
+### Requirements
 
-## ### Technology Stack
+- Node.js
+- npm
+- MongoDB running locally
 
-**Frontend**: HTML, CSS, JavaScript.
+The current database connection uses:
 
+```text
+mongodb://127.0.0.1:27017/timetableDB
+```
 
-**Backend**: Node.js, Express.js.
+### Start the application
 
+```bash
+cd backend
+npm install
+npm start
+```
 
-**Database**: MongoDB.
+Then open:
 
+```text
+http://localhost:5000
+```
 
-**Development Tools**: VS Code, Web Browser.
+For development with automatic server restart:
 
+```bash
+npm run dev
+```
 
+## API areas
 
----
+The Express server exposes routes under:
 
-## ### System Workflow
+```text
+/api
+/api/departments
+/api/semesters
+/api/teachers
+/api/subjects
+/api/assignments
+/api/rooms
+```
 
-1. **Authentication**: User logs into the system.
+The assignment API supports filtering by teacher, department, semester, and day.
 
+## Important limitations
 
-2. **Redirection**: Based on the role, a specific dashboard (Admin, Teacher, or Student) opens.
+This repository should be treated as a coursework/learning prototype:
 
+- Login currently performs a direct username/password lookup.
+- Passwords are stored as plain text in the current model.
+- There is no automatic optimization solver in this public version.
+- Automatic conflict detection is not implemented in the current backend.
+- Production authorization, validation, testing, and deployment hardening would be required before real-world use.
 
-3. **Data Retrieval**: The frontend fetches relevant data from the backend API.
+Documenting these limitations is intentional so the repository accurately represents its current implementation.
 
+## Related work
 
-4. **Dynamic Rendering**: The timetable is displayed dynamically on the UI.
+This project represents an earlier timetable-management approach. More advanced scheduling/optimization work can be developed separately without changing the scope of this repository.
 
+## Author
 
-
----
-
-## ### Contributors
-
-**Anfal Qureshi** (24PWBCS1069) 
+**Anfal Qureshi**  
+Computer Science student interested in software systems, databases, scheduling problems, and optimization.
